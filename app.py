@@ -8,13 +8,21 @@ import json
 import openai
 from werkzeug.utils import secure_filename
 
-# Add OpenAI configuration
-def configure_openai():
-    api_key = st.sidebar.text_input("Enter OpenAI API Key:", type="password")
-    if api_key:
-        openai.api_key = api_key
-        return True
-    return False
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    # This is the default and can be omitted
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
+
+response = client.responses.create(
+    model="gpt-4o",
+    instructions="You are a coding assistant that talks like a pirate.",
+    input="How do I check if a Python object is an instance of a class?",
+)
+
+print(response.output_text)
 
 # Function to chat with OpenAI
 def chat_with_recruiter_agent(prompt):
