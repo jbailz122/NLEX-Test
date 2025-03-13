@@ -75,4 +75,45 @@ if __name__ == "__main__":
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Ensure upload folder exists
 
 # Function to check allowed file types
-def
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Function to download and save file from URL
+@st.cache_data
+def download_file(file_url):
+    try:
+        response = requests.get(file_url, stream=True)
+        response.raise_for_status()
+
+        filename = secure_filename(file_url.split("/")[-1])
+
+        if not allowed_file(filename):
+            return None, "File type not allowed"
+
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+
+        with open(file_path, "wb") as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+
+        return file_path, f"File '{filename}' uploaded successfully!"
+    except requests.exceptions.RequestException as e:
+        return None, f"Failed to fetch file: {str(e)}"
+
+# Streamlit UI for Document Upload
+st.title("Document Upload via URL")
+st.write("Enter a document URL below to download and save it.")
+
+file_url = st.text_input("Enter file URL", "")
+
+if st.button("Upload Document"):
+    if file_url:
+        file_path, message = download_file(file_url)
+        if file_path:
+            st.success(message)
+            with open(file_path, "rb") as file:
+                st.download_button("Download File", file, file_name=file_path.split("/")[-1])
+        else:
+            st.error(message)
+    else:
+        st.warning("Please enter a valid URL.")
