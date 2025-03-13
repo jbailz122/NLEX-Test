@@ -8,15 +8,10 @@ import json
 import openai
 from werkzeug.utils import secure_filename
 
-# Configure OpenAI API Key
+# Add OpenAI configuration
 def configure_openai():
-    if "api_key" not in st.session_state:
-        st.session_state.api_key = ""
-
-    api_key = st.sidebar.text_input("Enter OpenAI API Key:", type="password", value=st.session_state.api_key)
-
+    api_key = st.sidebar.text_input("Enter OpenAI API Key:", type="password")
     if api_key:
-        st.session_state.api_key = api_key  # Save it in session_state
         openai.api_key = api_key
         return True
     return False
