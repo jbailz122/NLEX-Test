@@ -5,9 +5,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import time
 import json
-import openai
 from werkzeug.utils import secure_filename
-
 import os
 from openai import OpenAI
 
