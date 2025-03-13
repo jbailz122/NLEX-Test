@@ -1,7 +1,7 @@
 import streamlit as st
-import re
-import spacy
-from jinja2 import Template
+import requests
+import os
+from werkzeug.utils import secure_filename
 
 # Add OpenAI configuration
 def configure_openai():
@@ -56,3 +56,53 @@ def recruiter_agent_tab():
             st.session_state.messages.append({"role": "assistant", "content": response})
     # Chat interface
     st.subheader("Chat with Recruiter Agent")
+
+# Configure upload folder
+UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Function to check allowed file types
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Function to download and save file from URL
+def download_file(file_url):
+    try:
+        response = requests.get(file_url, stream=True)
+        if response.status_code != 200:
+            return None, "Failed to download file"
+
+        filename = secure_filename(file_url.split("/")[-1])
+
+        if not allowed_file(filename):
+            return None, "File type not allowed"
+
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+
+        with open(file_path, "wb") as file:
+            for chunk in response.iter_content(chunk_size=8192):
+                file.write(chunk)
+
+        return file_path, f"File '{filename}' uploaded successfully!"
+
+    except Exception as e:
+        return None, f"Error downloading file: {str(e)}"
+
+# Streamlit UI
+st.title("Document Upload via URL")
+st.write("Enter a document URL below to download and save it.")
+
+file_url = st.text_input("Enter file URL", "")
+
+if st.button("Upload Document"):
+    if file_url:
+        file_path, message = download_file(file_url)
+        if file_path:
+            st.success(message)
+            st.download_button("Download File", open(file_path, "rb"), file_name=file_path.split("/")[-1])
+        else:
+            st.error(message)
+    else:
+        st.warning("Please enter a valid URL.")
