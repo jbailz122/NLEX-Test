@@ -3,65 +3,56 @@ import re
 import spacy
 from jinja2 import Template
 
-# Load NLP model
-nlp = spacy.load("en_core_web_sm")
+# Add OpenAI configuration
+def configure_openai():
+    api_key = st.sidebar.text_input("Enter OpenAI API Key:", type="password")
+    if api_key:
+        openai.api_key = api_key
+        return True
+    return False
 
-# Streamlit App
-st.title("📝 Template Filler with Unstructured Data")
+def chat_with_recruiter_agent(prompt):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful recruiting assistant for a team of recruiters."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error: {str(e)}"
 
-# Upload template file
-st.sidebar.header("1️⃣ Upload Template File")
-template_file = st.sidebar.file_uploader("Upload a text template", type=["txt"])
-
-# Input unstructured text
-st.sidebar.header("2️⃣ Enter Unstructured Text")
-unstructured_text = st.sidebar.text_area("Paste your unstructured text here")
-
-# Function to extract key details
-def extract_data(text):
-    """Extracts names, dates, and amounts using NLP."""
-    doc = nlp(text)
+def recruiter_agent_tab():
+    st.title("Recruiter Agent")
     
-    extracted_data = {
-        "name": None,
-        "date": None,
-        "amount": None
-    }
+    if not configure_openai():
+        st.warning("Please enter your OpenAI API key in the sidebar to continue.")
+        return
 
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            extracted_data["name"] = ent.text
-        elif ent.label_ == "DATE":
-            extracted_data["date"] = ent.text
-        elif ent.label_ == "MONEY":
-            extracted_data["amount"] = ent.text
+     # Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    # Fallback regex for amount
-    amount_match = re.search(r"\$\d+(?:,\d{3})*(?:\.\d{2})?", text)
-    if amount_match and extracted_data["amount"] is None:
-        extracted_data["amount"] = amount_match.group()
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-    return extracted_data
+    # Chat input
+    if prompt := st.chat_input("Ask your recruiting question..."):
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-# Process and render template
-if template_file and unstructured_text:
-    # Read the template
-    template_text = template_file.read().decode("utf-8")
-    template = Template(template_text)
-
-    # Extract data from unstructured text
-    extracted_info = extract_data(unstructured_text)
-
-    # Render template
-    filled_template = template.render(extracted_info)
-
-    st.header("📄 Filled Template Output")
-    st.text_area("Generated Document", filled_template, height=300)
-
-    # Download button
-    st.download_button(
-        label="📥 Download Document",
-        data=filled_template,
-        file_name="filled_document.txt",
-        mime="text/plain"
-    )
+        # Generate and display assistant response
+        with st.chat_message("assistant"):
+            response = chat_with_recruiter_agent(prompt)
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+    # Chat interface
+    st.subheader("Chat with Recruiter Agent")
